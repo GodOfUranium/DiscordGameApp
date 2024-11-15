@@ -35,7 +35,7 @@ def createJson(guild:discord.guild):
     return 1 # to ensure it completed running
 
 # ----- add user to json -------
-def addUser(guild:discord.Guild, username:str, linkedTo:str):
+def addUser(guild:discord.Guild, username:str, linkedTo:int):
     user = {
         "username":username,
         "linkedTo":linkedTo,
@@ -53,7 +53,7 @@ def addUser(guild:discord.Guild, username:str, linkedTo:str):
     return 1 # to ensure it completed running
 
 # ----- get user from json -----
-def getUser(guild:discord.Guild, linkedTo:str):
+def getUser(guild:discord.Guild, linkedTo:int):
     with open(f"data/{guild.id}.json", "r") as f:
         data = json.load(f)
     for user in data["users"]:
@@ -62,7 +62,7 @@ def getUser(guild:discord.Guild, linkedTo:str):
     return None
 
 # --- delete user from json -----
-def deleteUser(guild:discord.Guild, linkedTo:str):
+def deleteUser(guild:discord.Guild, linkedTo:int):
     with open(f"data/{guild.id}.json", "r") as f:
         data = json.load(f)
     targetDict = getUser(guild, linkedTo)
@@ -89,11 +89,11 @@ async def register_command(ctx, username:str=None):
 
     await registerServer(ctx.guild)
 
-    if(getUser(ctx.guild, ctx.user.name) == None):
-        addUser(ctx.guild, username, ctx.user.name)==1
+    if(getUser(ctx.guild, ctx.user.id) == None):
+        addUser(ctx.guild, username, ctx.user.id)==1
         embed = Embed(
             title="/register",
-            description=f"Successfully registered {username} to account {ctx.user.mention}",
+            description=f"Successfully registered {username} to account {ctx.user.mention} ({ctx.user.id})",
             color=0x00ff00
         )
     else:
@@ -109,12 +109,12 @@ async def register_command(ctx, username:str=None):
     name="del_account",
     description="Deletes your entire Account. WARNING: not reversible!"
 )
-async def del_account(ctx):
+async def del_account_command(ctx):
     await ctx.response.defer()
 
     await registerServer(ctx.guild)
 
-    if(getUser(ctx.guild, ctx.user.name) != None):
+    if(getUser(ctx.guild, ctx.user.id) != None):
         embed = Embed(
             title="Are you sure?",
             description="Do you really want to delete all your account data?",
@@ -127,7 +127,7 @@ async def del_account(ctx):
             yesButton.disabled = True
             noButton.disabled = True
             
-            deleteUser(ctx.guild, ctx.user.name)
+            deleteUser(ctx.guild, ctx.user.id)
             
             embed = Embed(
                 title="/del_account",
