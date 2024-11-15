@@ -14,6 +14,13 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 ########### Functions ##########
+# ------ register server -------
+async def registerServer(guild):
+    try:
+        open(f"data/{guild.id}.json")
+    except FileNotFoundError:
+        createJson(guild)==1
+
 # ------ add server json -------
 def createJson(guild:discord.guild):
     serverTemplate = {
@@ -66,7 +73,7 @@ def deleteUser(guild:discord.Guild, linkedTo:str):
     with open(f"data/{guild.id}.json", "w") as f:
         json.dump(data, f, indent=4)
     print(f"\033[91m-\033[0m Removed user {targetDict["username"]} (linked to {linkedTo}) from users in data/{guild.id}.json (connected to Server \"{guild.name}\")")
-    return 1
+    return 1 # to ensure it completed running
 
 ########### Commands ###########
 # -------- /register -----------
@@ -80,25 +87,22 @@ async def register_command(ctx, username:str=None):
     if(username==None):
         username=ctx.user.display_name
 
-    try:
-        open(f"data/{ctx.guild.id}.json")
-    except FileNotFoundError:
-        createJson(ctx.guild)==1
-    finally:
-        if(getUser(ctx.guild, ctx.user.name) == None):
-            addUser(ctx.guild, username, ctx.user.name)==1
-            embed = Embed(
-                title="/register",
-                description=f"Successfully registered {username} to account {ctx.user.mention}",
-                color=0x00ff00
-            )
-        else:
-            embed = Embed(
-                title="/register",
-                description="You can only create one account",
-                color=0xff0000
-            )
-        await ctx.followup.send(embed=embed)
+    await registerServer(ctx.guild)
+
+    if(getUser(ctx.guild, ctx.user.name) == None):
+        addUser(ctx.guild, username, ctx.user.name)==1
+        embed = Embed(
+            title="/register",
+            description=f"Successfully registered {username} to account {ctx.user.mention}",
+            color=0x00ff00
+        )
+    else:
+        embed = Embed(
+            title="/register",
+            description="You can only create one account",
+            color=0xff0000
+        )
+    await ctx.followup.send(embed=embed)
 
 # ------- /del_account ----------
 @tree.command(
@@ -106,44 +110,55 @@ async def register_command(ctx, username:str=None):
     description="Deletes your entire Account. WARNING: not reversible!"
 )
 async def del_account(ctx):
-    embed = Embed(
-        title="Are you sure?",
-        description="Do you really want to delete all your account data?",
-        color=0xffff00)
+    await ctx.response.defer()
 
-    yesButton = Button(label="Yes", style=discord.ButtonStyle.danger)
-    noButton = Button(label="No", style=discord.ButtonStyle.success)
+    await registerServer(ctx.guild)
 
-    async def yesButton_callback(ctx):
-        yesButton.disabled = True
-        noButton.disabled = True
+    if(getUser(ctx.guild, ctx.user.name) != None):
+        embed = Embed(
+            title="Are you sure?",
+            description="Do you really want to delete all your account data?",
+            color=0xffff00)
+
+        yesButton = Button(label="Yes", style=discord.ButtonStyle.danger)
+        noButton = Button(label="No", style=discord.ButtonStyle.success)
+
+        async def yesButton_callback(ctx):
+            yesButton.disabled = True
+            noButton.disabled = True
+            
+            deleteUser(ctx.guild, ctx.user.name)
+            
+            embed = Embed(
+                title="/del_account",
+                description="Successfully deleted account",
+                color=0x00ff00)
+            
+            await ctx.response.edit_message(view=None, embed=embed)
         
-        deleteUser(ctx.guild, ctx.user.name)
+        async def noButton_callback(ctx):
+            yesButton.disabled = True
+            noButton.disabled = True
+            embed = Embed(
+                title="/del_account",
+                description="Successfully canceled deletion",
+                color=0x00ff00)
+            await ctx.response.edit_message(view=None, embed=embed)
         
+        yesButton.callback = yesButton_callback
+        noButton.callback = noButton_callback
+
+        view = View()
+        view.add_item(yesButton)
+        view.add_item(noButton)
+        await ctx.followup.send(embed=embed, view=view)
+    else:
         embed = Embed(
             title="/del_account",
-            description="Successfully deleted account",
-            color=0x00ff00)
-        
-        await ctx.response.edit_message(view=None, embed=embed)
-    
-    async def noButton_callback(ctx):
-        yesButton.disabled = True
-        noButton.disabled = True
-        embed = Embed(
-            title="/del_account",
-            description="Successfully canceled deletion",
-            color=0x00ff00)
-        await ctx.response.edit_message(view=None, embed=embed)
-    
-    yesButton.callback = yesButton_callback
-    noButton.callback = noButton_callback
-
-    view = View()
-    view.add_item(yesButton)
-    view.add_item(noButton)
-    
-    await ctx.response.send_message(embed=embed, view=view)
+            description="You can't delete an account if you don't have one",
+            color=0xff0000
+        )
+        await ctx.followup.send(embed=embed)
 
 ########### on_ready ###########
 @client.event
