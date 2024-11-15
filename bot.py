@@ -14,21 +14,21 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 ########### Functions ##########
-# -------- json server ---------
-def createJson(guild):
+# ------ add server json -------
+def createJson(guild:discord.guild):
     serverTemplate = {
         "guildName":guild.name,
-        "accounts":[]
+        "users":[]
     }
     with open(f"data/{guild.id}.json", "w") as f:
         json.dump(serverTemplate, f, indent=4)
 
-    print(f"\033[93m#\033[0m Added server {guild.id} ({guild.name}) to data directory. PATH: data/{guild.id}.json")
+    print(f"\033[92m#\033[0m Added server {guild.id} ({guild.name}) to data directory. PATH: data/{guild.id}.json")
 
     return 1 # to ensure it completed running
 
-# --------- json user ----------
-def addUser(guild, username:str, linkedTo:str):
+# ----- add user to json -------
+def addUser(guild:discord.Guild, username:str, linkedTo:str):
     user = {
         "username":username,
         "linkedTo":linkedTo,
@@ -37,22 +37,36 @@ def addUser(guild, username:str, linkedTo:str):
     }
     with open(f"data/{guild.id}.json", "r") as f:
         data = json.load(f)
-    data["accounts"].append(user)
+    data["users"].append(user)
     with open(f"data/{guild.id}.json", "w") as f:
         json.dump(data, f, indent=4)
 
-    print(f"\033[93m+\033[0m Added account {username} (linked to {linkedTo}) to data/{guild.id}.json (connected to Server \"{guild.name}\")")
+    print(f"\033[92m+\033[0m Added user {username} (linked to {linkedTo}) to data/{guild.id}.json (connected to Server \"{guild.name}\")")
 
     return 1 # to ensure it completed running
 
-# ------- get json user --------
-def getUser(guild, linkedTo:str):
+# ----- get user from json -----
+def getUser(guild:discord.Guild, linkedTo:str):
     with open(f"data/{guild.id}.json", "r") as f:
         data = json.load(f)
-        for user in data["accounts"]:
-            if(user["linkedTo"] == linkedTo):
-                return user
-        return None
+    for user in data["users"]:
+        if(user["linkedTo"] == linkedTo):
+            return user
+    return None
+
+# --- delete user from json -----
+def deleteUser(guild:discord.Guild, linkedTo:str):
+    with open(f"data/{guild.id}.json", "r") as f:
+        data = json.load(f)
+    targetDict = getUser(guild, linkedTo)
+    for i, d in enumerate(data["users"]):
+        if d == targetDict:
+            data["users"].remove(d)
+            break
+    with open(f"data/{guild.id}.json", "w") as f:
+        json.dump(data, f, indent=4)
+    print(f"\033[91m-\033[0m Removed user {targetDict["username"]} (linked to {linkedTo}) from users in data/{guild.id}.json (connected to Server \"{guild.name}\")")
+    return 1
 
 ########### Commands ###########
 # -------- /register -----------
@@ -104,7 +118,7 @@ async def del_account(ctx):
         yesButton.disabled = True
         noButton.disabled = True
         
-        # TODO: Delete User from Database
+        deleteUser(ctx.guild, ctx.user.name)
         
         embed = Embed(
             title="/del_account",
