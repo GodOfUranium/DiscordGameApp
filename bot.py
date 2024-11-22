@@ -5,6 +5,8 @@ from discord import app_commands, Embed
 from discord.ui import View, Button
 from dotenv import load_dotenv
 
+import inspect  # for logging in registerServer() / createJson()
+
 # .env
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
@@ -15,7 +17,7 @@ tree = app_commands.CommandTree(client)
 
 ########### Functions ##########
 # ------ register server -------
-async def registerServer(guild):
+async def registerServer(guild:discord.guild):
     try:
         open(f"data/{guild.id}.json")
     except FileNotFoundError:
@@ -30,7 +32,8 @@ def createJson(guild:discord.guild):
     with open(f"data/{guild.id}.json", "w") as f:
         json.dump(serverTemplate, f, indent=4)
 
-    print(f"\033[92m#\033[0m Added server {guild.id} ({guild.name}) to data directory. PATH: data/{guild.id}.json")
+    caller_name = inspect.stack()[2].function   # for logging
+    print(f"\033[92m#\033[0m Added server {guild.id} ({guild.name}) to data directory. PATH: data/{guild.id}.json (called by {caller_name})")
 
     return 1 # to ensure it completed running
 
@@ -93,7 +96,7 @@ async def register_command(ctx, username:str=None):
         addUser(ctx.guild, username, ctx.user.id)==1
         embed = Embed(
             title="/register",
-            description=f"Successfully registered {username} to account {ctx.user.mention} ({ctx.user.id})",
+            description=f"Successfully registered {username} to account {ctx.user.mention}",
             color=0x00ff00
         )
     else:
@@ -118,7 +121,8 @@ async def del_account_command(ctx):
         embed = Embed(
             title="Are you sure?",
             description="Do you really want to delete all your account data?",
-            color=0xffff00)
+            color=0xffff00
+        )
 
         yesButton = Button(label="Yes", style=discord.ButtonStyle.danger)
         noButton = Button(label="No", style=discord.ButtonStyle.success)
@@ -126,23 +130,40 @@ async def del_account_command(ctx):
         async def yesButton_callback(ctx):
             yesButton.disabled = True
             noButton.disabled = True
-            
-            deleteUser(ctx.guild, ctx.user.id)
-            
-            embed = Embed(
-                title="/del_account",
-                description="Successfully deleted account",
-                color=0x00ff00)
-            
+
+            if(getUser(ctx.guild, ctx.user.id) != None):
+                deleteUser(ctx.guild, ctx.user.id)
+                embed = Embed(
+                    title="/del_account",
+                    description="Successfully deleted account",
+                    color=0x00ff00
+                )
+            else:
+                embed = Embed(
+                    title="/del_account",
+                    description="Your account has already been deleted",
+                    color=0x3e1c00
+                )
+
             await ctx.response.edit_message(view=None, embed=embed)
         
         async def noButton_callback(ctx):
             yesButton.disabled = True
             noButton.disabled = True
-            embed = Embed(
-                title="/del_account",
-                description="Successfully canceled deletion",
-                color=0x00ff00)
+
+            if(getUser(ctx.guild, ctx.user.id) != None):
+                embed = Embed(
+                    title="/del_account",
+                    description="Successfully canceled deletion",
+                    color=0x00ff00
+                )
+            else:
+                embed = Embed(
+                    title="/del_account",
+                    description="Your account has already been deleted",
+                    color=0x3e1c00
+                )
+
             await ctx.response.edit_message(view=None, embed=embed)
         
         yesButton.callback = yesButton_callback
@@ -156,6 +177,29 @@ async def del_account_command(ctx):
         embed = Embed(
             title="/del_account",
             description="You can't delete an account if you don't have one",
+            color=0xff0000
+        )
+        await ctx.followup.send(embed=embed)
+
+# ----------- /shop -------------
+@tree.command(
+    name="shop",
+    description="Opens shop"
+)
+async def shop_command(ctx):
+    await registerServer(ctx.guild)
+
+    await ctx.response.defer()
+    if(getUser(ctx.guild, ctx.user.id) != None):
+        embed = Embed(
+            title="Shop",
+            description="Shop page"
+        )
+        await ctx.followup.send(embed=embed)
+    else:
+        embed = Embed(
+            title="/shop",
+            description="You need to register to open the shop",
             color=0xff0000
         )
         await ctx.followup.send(embed=embed)
