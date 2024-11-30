@@ -21,7 +21,7 @@ async def registerServer(guild:discord.guild):
     try:
         open(f"data/{guild.id}.json")
     except FileNotFoundError:
-        createJson(guild)==1
+        createJson(guild)
 
 # ------ add server json -------
 def createJson(guild:discord.guild):
@@ -34,8 +34,6 @@ def createJson(guild:discord.guild):
 
     caller_name = inspect.stack()[2].function   # for logging
     print(f"\033[92m#\033[0m Added server {guild.id} ({guild.name}) to data directory. PATH: data/{guild.id}.json (called by {caller_name})")
-
-    return 1 # to ensure it completed running
 
 # ----- add user to json -------
 def addUser(guild:discord.Guild, username:str, linkedTo:int):
@@ -52,8 +50,6 @@ def addUser(guild:discord.Guild, username:str, linkedTo:int):
         json.dump(data, f, indent=4)
 
     print(f"\033[92m+\033[0m Added user {username} (linked to {linkedTo}) to data/{guild.id}.json (connected to Server \"{guild.name}\")")
-
-    return 1 # to ensure it completed running
 
 # ----- get user from json -----
 def getUser(guild:discord.Guild, linkedTo:int):
@@ -76,7 +72,6 @@ def deleteUser(guild:discord.Guild, linkedTo:int):
     with open(f"data/{guild.id}.json", "w") as f:
         json.dump(data, f, indent=4)
     print(f"\033[91m-\033[0m Removed user {targetDict["username"]} (linked to {linkedTo}) from users in data/{guild.id}.json (connected to Server \"{guild.name}\")")
-    return 1 # to ensure it completed running
 
 ########### Commands ###########
 # -------- /register -----------
@@ -93,7 +88,7 @@ async def register_command(ctx, username:str=None):
     await registerServer(ctx.guild)
 
     if(getUser(ctx.guild, ctx.user.id) == None):
-        addUser(ctx.guild, username, ctx.user.id)==1
+        addUser(ctx.guild, username, ctx.user.id)
         embed = Embed(
             title="/register",
             description=f"Successfully registered {username} to account {ctx.user.mention}",
