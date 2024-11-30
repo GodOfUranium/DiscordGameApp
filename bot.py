@@ -33,7 +33,7 @@ def createJson(guild:discord.guild):
         json.dump(serverTemplate, f, indent=4)
 
     caller_name = inspect.stack()[2].function   # for logging
-    print(f"\033[92m#\033[0m Added server {guild.id} ({guild.name}) to data directory. PATH: data/{guild.id}.json (called by {caller_name})")
+    print(f"\033[1;32m#\033[0m Added server {guild.id} ({guild.name}) to data directory. PATH: data/{guild.id}.json (called by {caller_name})")
 
 # ----- add user to json -------
 def addUser(guild:discord.Guild, username:str, linkedTo:int):
@@ -41,6 +41,7 @@ def addUser(guild:discord.Guild, username:str, linkedTo:int):
         "username":username,
         "linkedTo":linkedTo,
         "cash":0,
+        "mineLevel":0,
         "inventory":[]
     }
     with open(f"data/{guild.id}.json", "r") as f:
@@ -49,14 +50,28 @@ def addUser(guild:discord.Guild, username:str, linkedTo:int):
     with open(f"data/{guild.id}.json", "w") as f:
         json.dump(data, f, indent=4)
 
-    print(f"\033[92m+\033[0m Added user {username} (linked to {linkedTo}) to data/{guild.id}.json (connected to Server \"{guild.name}\")")
+    print(f"\033[1;32m+\033[0m Added user {username} (linked to {linkedTo}) to data/{guild.id}.json (connected to Server \"{guild.name}\")")
 
-# ----- get user from json -----
-def getUser(guild:discord.Guild, linkedTo:int):
+# ---- add item to inventory ----
+def addItem(guild:discord.Guild, linkedTo:int, itemName:str):
+    item = {
+        "name":itemName
+    }
     with open(f"data/{guild.id}.json", "r") as f:
         data = json.load(f)
-    for user in data["users"]:
+    data["users"][getUser(guild=guild,linkedTo=linkedTo, getPos=True)]["inventory"].append(item)
+    with open(f"data/{guild.id}.json", "w") as f:
+        json.dump(data, f, indent=4)
+
+# ----- get user from json ------
+def getUser(guild:discord.Guild, linkedTo:int, getPos:bool=False):
+    with open(f"data/{guild.id}.json", "r") as f:
+        data = json.load(f)
+    for i in range(len(data["users"])):
+        user = data["users"][i]
         if(user["linkedTo"] == linkedTo):
+            if(getPos):
+                return i
             return user
     return None
 
@@ -71,7 +86,7 @@ def deleteUser(guild:discord.Guild, linkedTo:int):
             break
     with open(f"data/{guild.id}.json", "w") as f:
         json.dump(data, f, indent=4)
-    print(f"\033[91m-\033[0m Removed user {targetDict['username']} (linked to {linkedTo}) from users in data/{guild.id}.json (connected to Server \"{guild.name}\")")
+    print(f"\033[1;31m-\033[0m Removed user {targetDict['username']} (linked to {linkedTo}) from users in data/{guild.id}.json (connected to Server \"{guild.name}\")")
 
 ########### Commands ###########
 # -------- /register -----------
@@ -176,28 +191,17 @@ async def del_account_command(ctx):
         )
         await ctx.followup.send(embed=embed)
 
-# ----------- /shop -------------
+# ---------- /mine --------------
 @tree.command(
-    name="shop",
-    description="Opens shop"
+    name="mine",
+    description="Mine to get Items"
 )
-async def shop_command(ctx):
+async def mine_command(ctx):
     await registerServer(ctx.guild)
 
-    await ctx.response.defer()
-    if(getUser(ctx.guild, ctx.user.id) != None):
-        embed = Embed(
-            title="Shop",
-            description="Shop page"
-        )
-        await ctx.followup.send(embed=embed)
-    else:
-        embed = Embed(
-            title="/shop",
-            description="You need to register to open the shop",
-            color=0xff0000
-        )
-        await ctx.followup.send(embed=embed)
+    addItem(ctx.guild, ctx.user.id, "testItem")
+
+    await ctx.response.send_message("complete")
 
 ########### on_ready ###########
 @client.event
