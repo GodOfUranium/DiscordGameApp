@@ -71,7 +71,7 @@ def deleteUser(guild:discord.Guild, linkedTo:int):
             break
     with open(f"data/{guild.id}.json", "w") as f:
         json.dump(data, f, indent=4)
-    print(f"\033[91m-\033[0m Removed user {targetDict["username"]} (linked to {linkedTo}) from users in data/{guild.id}.json (connected to Server \"{guild.name}\")")
+    print(f"\033[91m-\033[0m Removed user {targetDict['username']} (linked to {linkedTo}) from users in data/{guild.id}.json (connected to Server \"{guild.name}\")")
 
 ########### Commands ###########
 # -------- /register -----------
