@@ -53,10 +53,7 @@ def addUser(guild:discord.Guild, username:str, linkedTo:int):
     print(f"\033[1;32m+\033[0m Added user {username} (linked to {linkedTo}) to data/{guild.id}.json (connected to Server \"{guild.name}\")")
 
 # ---- add item to inventory ----
-def addItem(guild:discord.Guild, linkedTo:int, itemName:str):
-    item = {
-        "name":itemName
-    }
+def addItem(guild:discord.Guild, linkedTo:int, item:dict):
     with open(f"data/{guild.id}.json", "r") as f:
         data = json.load(f)
     data["users"][getUser(guild=guild,linkedTo=linkedTo, getPos=True)]["inventory"].append(item)
@@ -199,9 +196,13 @@ async def del_account_command(ctx):
 async def mine_command(ctx):
     await registerServer(ctx.guild)
 
-    addItem(ctx.guild, ctx.user.id, "testItem")
+    item = {
+        "name": "testItem"
+    }
 
-    await ctx.response.send_message("complete")
+    addItem(ctx.guild, ctx.user.id, item)
+
+    await ctx.response.send_message("Complete!")
 
 ########### on_ready ###########
 @client.event
