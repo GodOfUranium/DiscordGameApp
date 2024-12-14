@@ -1,5 +1,7 @@
 import os
 import json
+import logging
+import logging.handlers
 import discord
 from discord import app_commands, Embed
 from discord.ui import View, Button
@@ -9,9 +11,24 @@ import inspect  # for logging in registerServer() / createJson()
 
 """
 TODO LIST:
-  * TODO change prints to logging
   * TODO finish /mine
 """
+
+# logging
+logger = logging.getLogger('discord')
+logger.setLevel(logging.INFO)
+logging.getLogger('discord.http').setLevel(logging.INFO)
+
+handler = logging.handlers.RotatingFileHandler(
+    filename='data/logs/discord.log',
+    encoding='utf-8',
+    maxBytes=32 * 1024 * 1024,  # 32 MiB
+    backupCount=5,  # Rotate through 5 files
+)
+date_format = '%Y-%m-%d %H:%M:%S'
+formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', date_format, style='{')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 # .env
 load_dotenv()
@@ -35,11 +52,11 @@ def createJson(guild:discord.guild):
         "guildName":guild.name,
         "users":[]
     }
-    with open(f"data/guild/{guild.id}.json", "w") as f:
+    with open(f"data/guilds/{guild.id}.json", "w") as f:
         json.dump(serverTemplate, f, indent=4)
 
     caller_name = inspect.stack()[2].function   # for logging
-    print(f"\033[1;32m#\033[0m Added server {guild.id} ({guild.name}) to data directory. PATH: data/guild/{guild.id}.json (called by {caller_name})")
+    logger.info(f"# Added server {guild.id} ({guild.name}) to data directory. PATH: data/guilds/{guild.id}.json (called by {caller_name})")
 
 # ----- add user to json -------
 def addUser(guild:discord.Guild, username:str, linkedTo:int):
@@ -50,25 +67,25 @@ def addUser(guild:discord.Guild, username:str, linkedTo:int):
         "mineLevel":0,
         "inventory":[]
     }
-    with open(f"data/guild/{guild.id}.json", "r") as f:
+    with open(f"data/guilds/{guild.id}.json", "r") as f:
         data = json.load(f)
     data["users"].append(user)
-    with open(f"data/guild/{guild.id}.json", "w") as f:
+    with open(f"data/guilds/{guild.id}.json", "w") as f:
         json.dump(data, f, indent=4)
 
-    print(f"\033[1;32m+\033[0m Added user {username} (linked to {linkedTo}) to data/guild/{guild.id}.json (connected to Server \"{guild.name}\")")
+    logger.info(f"+ Added user {username} (linked to {linkedTo}) to data/guilds/{guild.id}.json (connected to Server \"{guild.name}\")")
 
 # ---- add item to inventory ----
 def addItem(guild:discord.Guild, linkedTo:int, item:dict):
-    with open(f"data/guild/{guild.id}.json", "r") as f:
+    with open(f"data/guilds/{guild.id}.json", "r") as f:
         data = json.load(f)
     data["users"][getUser(guild=guild,linkedTo=linkedTo, getPos=True)]["inventory"].append(item)
-    with open(f"data/guild/{guild.id}.json", "w") as f:
+    with open(f"data/guilds/{guild.id}.json", "w") as f:
         json.dump(data, f, indent=4)
 
 # ----- get user from json ------
 def getUser(guild:discord.Guild, linkedTo:int, getPos:bool=False):
-    with open(f"data/guild/{guild.id}.json", "r") as f:
+    with open(f"data/guilds/{guild.id}.json", "r") as f:
         data = json.load(f)
     for i in range(len(data["users"])):
         user = data["users"][i]
@@ -80,16 +97,16 @@ def getUser(guild:discord.Guild, linkedTo:int, getPos:bool=False):
 
 # --- delete user from json -----
 def deleteUser(guild:discord.Guild, linkedTo:int):
-    with open(f"data/guild/{guild.id}.json", "r") as f:
+    with open(f"data/guilds/{guild.id}.json", "r") as f:
         data = json.load(f)
     targetDict = getUser(guild, linkedTo)
     for i, d in enumerate(data["users"]):
         if d == targetDict:
             data["users"].remove(d)
             break
-    with open(f"data/guild/{guild.id}.json", "w") as f:
+    with open(f"data/guilds/{guild.id}.json", "w") as f:
         json.dump(data, f, indent=4)
-    print(f"\033[1;31m-\033[0m Removed user {targetDict['username']} (linked to {linkedTo}) from users in data/guild/{guild.id}.json (connected to Server \"{guild.name}\")")
+    logger.info(f"- Removed user {targetDict['username']} (linked to {linkedTo}) from users in data/guilds/{guild.id}.json (connected to Server \"{guild.name}\")")
 
 ########### Commands ###########
 # -------- /register -----------
@@ -100,10 +117,10 @@ def deleteUser(guild:discord.Guild, linkedTo:int):
 async def register_command(ctx, username:str=None):
     await ctx.response.defer()
 
+    await registerServer(ctx.guild)
+    
     if(username==None):
         username=ctx.user.display_name
-
-    await registerServer(ctx.guild)
 
     if(getUser(ctx.guild, ctx.user.id) == None):
         addUser(ctx.guild, username, ctx.user.id)
@@ -213,8 +230,8 @@ async def mine_command(ctx):
 ########### on_ready ###########
 @client.event
 async def on_ready():
-    print("\033[94;1mSyncing Tree...\033[0m")
+    logger.info("Syncing Tree...")
     await tree.sync()
-    print("\033[92;1mReady!\033[0m")
+    logger.info("Ready!")
 
-client.run(token)
+client.run(token, log_handler=None)
