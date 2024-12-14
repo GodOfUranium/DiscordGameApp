@@ -7,6 +7,14 @@ from dotenv import load_dotenv
 
 import inspect  # for logging in registerServer() / createJson()
 
+"""
+TODO LIST:
+  * TODO change prints to logging
+  * TODO add items.json ant tool.json to /data
+  * TODO move server data to /data/guilds
+  * TODO finish /mine
+"""
+
 # .env
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
