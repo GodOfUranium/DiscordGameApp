@@ -2,23 +2,23 @@ import os
 import json
 import logging
 import logging.handlers
+import random
 import discord
 from discord import app_commands, Embed
 from discord.ui import View, Button
 from dotenv import load_dotenv
 
-import inspect  # for logging in registerServer() / createJson()
-
 """
 TODO LIST:
-  * TODO finish /mine
+  * TODO add /sell with optional item
+  * TODO add /info for item info
+  * TODO add /inv and /inventory to view inventory
 """
 
 # logging
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
 logging.getLogger('discord.http').setLevel(logging.INFO)
-
 handler = logging.handlers.RotatingFileHandler(
     filename='data/logs/discord.log',
     encoding='utf-8',
@@ -55,8 +55,7 @@ def createJson(guild:discord.guild):
     with open(f"data/guilds/{guild.id}.json", "w") as f:
         json.dump(serverTemplate, f, indent=4)
 
-    caller_name = inspect.stack()[2].function   # for logging
-    logger.info(f"# Added server {guild.id} ({guild.name}) to data directory. PATH: data/guilds/{guild.id}.json (called by {caller_name})")
+    logger.info(f"# Added server {guild.id} ({guild.name}) to data directory. PATH: data/guilds/{guild.id}.json")
 
 # ----- add user to json -------
 def addUser(guild:discord.Guild, username:str, linkedTo:int):
@@ -75,27 +74,7 @@ def addUser(guild:discord.Guild, username:str, linkedTo:int):
 
     logger.info(f"+ Added user {username} (linked to {linkedTo}) to data/guilds/{guild.id}.json (connected to Server \"{guild.name}\")")
 
-# ---- add item to inventory ----
-def addItem(guild:discord.Guild, linkedTo:int, item:dict):
-    with open(f"data/guilds/{guild.id}.json", "r") as f:
-        data = json.load(f)
-    data["users"][getUser(guild=guild,linkedTo=linkedTo, getPos=True)]["inventory"].append(item)
-    with open(f"data/guilds/{guild.id}.json", "w") as f:
-        json.dump(data, f, indent=4)
-
-# ----- get user from json ------
-def getUser(guild:discord.Guild, linkedTo:int, getPos:bool=False):
-    with open(f"data/guilds/{guild.id}.json", "r") as f:
-        data = json.load(f)
-    for i in range(len(data["users"])):
-        user = data["users"][i]
-        if(user["linkedTo"] == linkedTo):
-            if(getPos):
-                return i
-            return user
-    return None
-
-# --- delete user from json -----
+# --- delete user from json ----
 def deleteUser(guild:discord.Guild, linkedTo:int):
     with open(f"data/guilds/{guild.id}.json", "r") as f:
         data = json.load(f)
@@ -107,6 +86,54 @@ def deleteUser(guild:discord.Guild, linkedTo:int):
     with open(f"data/guilds/{guild.id}.json", "w") as f:
         json.dump(data, f, indent=4)
     logger.info(f"- Removed user {targetDict['username']} (linked to {linkedTo}) from users in data/guilds/{guild.id}.json (connected to Server \"{guild.name}\")")
+
+# --- add item to inventory ----
+def addItem(guild:discord.Guild, linkedTo:int, item:dict):
+    with open(f"data/guilds/{guild.id}.json", "r") as f:
+        data = json.load(f)
+    data["users"][getUser(guild=guild,linkedTo=linkedTo, getPos=True)]["inventory"].append(item)
+    with open(f"data/guilds/{guild.id}.json", "w") as f:
+        json.dump(data, f, indent=4)
+
+# - remove item from inventory -
+def removeItem(guild:discord.Guild, linkedTo:int, item:str|dict):
+    with open(f"data/guilds/{guild.id}.json", "r") as f:
+        data = json.load(f)
+    inv = getUser(guild=guild, linkedTo=linkedTo)["inventory"]
+    userPos = getUser(guild=guild, linkedTo=linkedTo, getPos=True)
+    if(type(item) == str):
+        for i, dict in enumerate(inv):
+            if dict["name"] == item:
+                data["users"][userPos]["inventory"].remove(dict)
+                break
+    else:
+        data["users"][userPos]["inventory"].remove(item)
+    with open(f"data/guilds/{guild.id}.json", "w") as f:
+        json.dump(data, f, indent=4)
+
+# ----- get user from json -----
+def getUser(guild:discord.Guild, linkedTo:int, getPos:bool=False):
+    with open(f"data/guilds/{guild.id}.json", "r") as f:
+        data = json.load(f)
+    for i in range(len(data["users"])):
+        user = data["users"][i]
+        if(user["linkedTo"] == linkedTo):
+            if(getPos):
+                return i
+            return user
+    return None
+
+# - get item from items.json --
+def getItem(category:str, name:str, getPos:bool=False):
+    with open("data/items.json") as f:
+        data = json.load(f)
+    for i in range(len(data[category])):
+        item = data[category][i]
+        if(item["name"] == name or item == name):
+            if(getPos):
+                return i
+            return item
+    return None
 
 ########### Commands ###########
 # -------- /register -----------
@@ -217,15 +244,53 @@ async def del_account_command(ctx):
     description="Mine to get Items"
 )
 async def mine_command(ctx):
+    await ctx.response.defer()
+
     await registerServer(ctx.guild)
 
+    # ~~~ PICK ITEM ~~~
+    # pick random category from items.json
+    with open("data/items.json") as f:
+        items = json.load(f)
+    itemCategory = items[random.choices(list(items), weights=[0.67, 0.33], k=1)[0]]
+
+    # find weights of elements
+    weights = [weight["rarity"]/100 for weight in itemCategory]
+
+    # choose a random item with weights
+    itemDict = random.choices(itemCategory, weights=weights, k=1)[0]
+
+    # make itemName the name of the item in the .json
+    itemName = itemDict["name"]
+
+    # ~~~ QUANTITY ~~~
+    # get inv
+    inv = getUser(ctx.guild, ctx.user.id)["inventory"]
+
+    # add 1 to the quantity if item is existent and remove old item
+    quantity = 1
+    for item in inv:
+        if item["name"] == itemName:
+            quantity = item["quantity"] + 1
+            removeItem(ctx.guild, ctx.user.id, item)
+            break
+
+    # ~~~ ITEM DICT ~~~
+    # create item dict
     item = {
-        "name": "testItem"
+        "name": itemName,
+        "quantity": quantity
     }
 
+    # add item to inv
     addItem(ctx.guild, ctx.user.id, item)
 
-    await ctx.response.send_message("Complete!")
+    embed = Embed(
+        title="/mine",
+        description=f"{getUser(ctx.guild, ctx.user.id)['username']} has just mined a {item['name']}!"
+    )
+
+    await ctx.followup.send(embed=embed)
 
 ########### on_ready ###########
 @client.event

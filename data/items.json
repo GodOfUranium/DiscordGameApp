@@ -1,0 +1,66 @@
+{
+    "stones": [
+        {
+            "name": "stone",
+            "rarity": 65
+        },
+        {
+            "name": "dirt",
+            "rarity": 15
+        },
+        {
+            "name": "gravel",
+            "rarity": 7
+        },
+        {
+            "name": "andesite",
+            "rarity": 3
+        },
+        {
+            "name": "granite",
+            "rarity": 2
+        },
+        {
+            "name": "diorite",
+            "rarity": 8
+        }
+    ],
+    "ores": [
+        {
+            "name": "coal",
+            "rarity": 50
+        },
+        {
+            "name": "copper",
+            "rarity": 15
+        },
+        {
+            "name": "iron",
+            "rarity": 10
+        },
+        {
+            "name": "tin",
+            "rarity": 10
+        },
+        {
+            "name": "zinc",
+            "rarity": 5
+        },
+        {
+            "name": "silver",
+            "rarity": 3
+        },
+        {
+            "name": "gold",
+            "rarity": 2
+        },
+        {
+            "name": "platinum",
+            "rarity": 1
+        },
+        {
+            "name": "diamond",
+            "rarity": 1
+        }
+    ]
+}
