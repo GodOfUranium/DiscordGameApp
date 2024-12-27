@@ -1,4 +1,4 @@
-import os
+from os import environ
 import json
 import logging
 import logging.handlers
@@ -33,8 +33,13 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 # .env
-load_dotenv()
-token = os.getenv('DISCORD_TOKEN')
+if not load_dotenv():
+    logger.warning("dotenv presumably empty")
+token = environ.get('DISCORD_TOKEN')
+if token == "":
+    logger.critical("Could not load discord token")
+    exit()
+
 # discord
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
