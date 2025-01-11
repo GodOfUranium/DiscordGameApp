@@ -1,8 +1,9 @@
 from os import environ
 import json
+import random
 import logging
 import logging.handlers
-import random
+# import pymysql
 import discord
 from discord import app_commands, Embed
 from discord.ui import View, Button
@@ -31,7 +32,6 @@ date_format = '%Y-%m-%d %H:%M:%S'
 formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', date_format, style='{')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-
 # .env
 if not load_dotenv():
     logger.warning("dotenv presumably empty")
@@ -40,6 +40,19 @@ if token == "":
     logger.critical("Could not load discord token")
     exit()
 
+"""
+db_host = os.getenv('DB_HOST')
+db_user = os.getenv('DB_USER'),
+db_pass = os.getenv('DB_PASS'),
+db_name = os.getenv('DB_NAME')
+# pymysql
+connection = pymysql.connect(
+    host=db_host,
+    user=db_user,
+    password=db_pass,
+    database=db_name
+)
+"""
 # discord
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
