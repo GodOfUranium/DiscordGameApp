@@ -1,4 +1,4 @@
-import os
+from os import environ
 import json
 import random
 import logging
@@ -33,8 +33,13 @@ formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', 
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 # .env
-load_dotenv()
-token = os.getenv('DISCORD_TOKEN')
+if not load_dotenv():
+    logger.warning("dotenv presumably empty")
+token = environ.get('DISCORD_TOKEN')
+if token == "":
+    logger.critical("Could not load discord token")
+    exit()
+
 """
 db_host = os.getenv('DB_HOST')
 db_user = os.getenv('DB_USER'),
